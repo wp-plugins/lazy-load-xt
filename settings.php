@@ -81,7 +81,6 @@ class LazyLoadXTSettings {
 	}
 
 	function lazyloadxt_settings_init() {
-		$this->update();
 
 		register_setting( 'basicSettings', 'lazyloadxt_general' );
 		register_setting( 'basicSettings', 'lazyloadxt_effects' );
