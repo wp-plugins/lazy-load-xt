@@ -236,56 +236,6 @@ class LazyLoadXTSettings {
 	}
 
 
-	function lazyloadxt_advanced_enabled_render() {
-
-		$options = get_option( 'lazyloadxt_advanced' )
-		?>
-		<fieldset>
-			<legend class="screen-reader-text">
-				<span><?php _e('Enable advanced settings', $this->ns ); ?></span>
-			</legend>
-			<label title="Enabled">
-				<input type="radio" name="lazyloadxt_advanced[lazyloadxt_enabled]" value="1" <?php checked( $options['lazyloadxt_enabled'], 1 ); ?>>
-				<span>Enabled</span>
-			</label>
-			<br>
-			<label title="Disabled">
-				<input type="radio" name="lazyloadxt_advanced[lazyloadxt_enabled]" value="0" <?php checked( $options['lazyloadxt_enabled'], 0 ); ?>>
-				<span>Disabled</span>
-			</label>
-		</fieldset>
-		<?php
-
-	}
-
-	function lazyloadxt_advanced_render() {
-
-		$options = get_option( 'lazyloadxt_advanced' );
-		?>
-		<fieldset>
-			<legend class="screen-reader-text">
-				<span><?php _e('Advanced settings', $this->ns ); ?></span>
-			</legend>
-			<label for="lazyloadxt_edgeY">
-				<input type='number' id='lazyloadxt_edgeY' name='lazyloadxt_advanced[lazyloadxt_edgeY]' value="<?php echo $options['lazyloadxt_edgeY']; ?>">
-				<p class="description"><strong>edgeY:</strong> <?php _e('Expand visible page area (viewport) in vertical direction by specified amount of pixels, so that elements start to load even if they are not visible, but will be visible after scroll by edgeY pixels', $this->ns ); ?></p>
-			</label>
-			<br />
-			<label for="lazyloadxt_edgeX">
-				<input type='number' id='lazyloadxt_edgeX' name='lazyloadxt_advanced[lazyloadxt_edgeX]' value="<?php echo $options['lazyloadxt_edgeX']; ?>">
-				<p class="description"><strong>edgeX:</strong> <?php _e('Expand visible page area in horizontal direction by specified amount of pixels', $this->ns ); ?></p>
-			</label>
-			<br />
-			<label for="lazyloadxt_throttle">
-				<input type='number' id='lazyloadxt_throttle' name='lazyloadxt_advanced[lazyloadxt_throttle]' value="<?php echo $options['lazyloadxt_throttle']; ?>">
-				<p class="description"><strong>throttle:</strong> <?php _e('Time interval (in ms) to check for visible elements, the plugin uses it to speed up page work in the case of flow of page change events.', $this->ns ); ?></p>
-			</label>
-		</fieldset>
-		<?php
-
-	}
-
-
 	function lazyloadxt_basic_section_callback() { 
 		_e( 'Customize the basic features of Lazy Load XT.', $this->ns );
 	}

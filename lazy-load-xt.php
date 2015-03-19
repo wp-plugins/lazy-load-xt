@@ -43,10 +43,6 @@ class LazyLoadXT {
 		} else {
 			// Enqueue Lazy Load XT scripts and styles
 			add_action( 'wp_enqueue_scripts', array($this,'load_scripts') );
-			// If advanced settings are enabled, print inline js in the head
-			if ( $this->settings['advanced'] ) {
-				add_action( 'wp_head', array($this,'print_scripts') );
-			}
 			
 			// Replace the 'src' attr with 'data-src' in the_content
 			add_filter( 'the_content', array($this,'the_content_filter') );
@@ -181,19 +177,6 @@ class LazyLoadXT {
 			wp_enqueue_script( 'lazy-load-xt-deferred', $script_url_pre.'.autoload'.$min.'.js', array( 'jquery','lazy-load-xt-script' ), $this->lazyloadxt_ver, $footer );
 		}
 		
-	}
-
-	function print_scripts() {
-		?>
-		<script type="text/javascript">
-			jQuery.extend(jQuery.lazyLoadXT, { <?php
-				// Print out the advanced settings
-				foreach ($this->settings['advanced'] as $key => $val) {
-					echo "$key : '$val', ";
-				}
-			?> } );
-		</script>
-		<?php
 	}
 
 	function the_content_filter($content) {
