@@ -4,7 +4,7 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
 class LazyLoadXTSettings {
 
-	protected $ver = '0.3.0'; // Plugin version
+	protected $ver = '0.3.1'; // Plugin version
 	protected $ns = 'lazy-load-xt';
 	protected $defaults = array(
 			'general' => array(
@@ -12,6 +12,7 @@ class LazyLoadXTSettings {
 					'lazyloadxt_thumbnails' => 1,
 					'lazyloadxt_textwidgets' => 1,
 					'lazyloadxt_avatars' => 1,
+					'lazyloadxt_excludeclasses' => '',
 					'lazyloadxt_img' => 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
 				),
 		);
