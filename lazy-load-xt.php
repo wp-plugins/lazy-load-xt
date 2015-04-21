@@ -24,14 +24,6 @@ class LazyLoadXT {
 	protected $settings; // Settings for this plugin
 
 	function __construct() {
-
-		// Store our settings in memory to reduce mysql calls
-		$this->settings = $this->get_settings();
-		$this->dir = plugin_dir_url(__FILE__);
-		// The CDN has an older version
-		if ($this->settings['cdn']) {
-			$this->lazyloadxt_ver = '1.0.5';
-		}
 		
 		// If we're in the admin area, load the settings class
 		if (is_admin()) {
@@ -41,22 +33,31 @@ class LazyLoadXT {
 			register_activation_hook(__FILE__,array($settingsClass,'first_time_activation'));
 			add_filter( 'plugin_action_links_'.plugin_basename(__FILE__), array($settingsClass,'lazyloadxt_action_links'));
 		} else {
+
+			// Store our settings in memory to reduce mysql calls
+			$this->settings = $this->get_settings();
+			$this->dir = plugin_dir_url(__FILE__);
+			// The CDN has an older version
+			if ($this->settings['cdn']) {
+				$this->lazyloadxt_ver = '1.0.5';
+			}
+			
 			// Enqueue Lazy Load XT scripts and styles
 			add_action( 'wp_enqueue_scripts', array($this,'load_scripts') );
 			
 			// Replace the 'src' attr with 'data-src' in the_content
-			add_filter( 'the_content', array($this,'the_content_filter') );
+			add_filter( 'the_content', array($this,'filter_html') );
 			// If enabled replace the 'src' attr with 'data-src' in text widgets
 			if ($this->settings['textwidgets']) {
-				add_filter( 'widget_text', array($this,'the_content_filter') );
+				add_filter( 'widget_text', array($this,'filter_html') );
 			}
 			// If enabled replace the 'src' attr with 'data-src' in the_post_thumbnail
 			if ($this->settings['thumbnails']) {
-				add_filter( 'post_thumbnail_html', array($this,'the_content_filter') );
+				add_filter( 'post_thumbnail_html', array($this,'filter_html') );
 			}
 			// If enabled replace the 'src' attr with 'data-src' in the_post_thumbnail
 			if ($this->settings['avatars']) {
-				add_filter( 'get_avatar', array($this,'the_content_filter') );
+				add_filter( 'get_avatar', array($this,'filter_html') );
 			}
 		}
 		
@@ -80,6 +81,7 @@ class LazyLoadXT {
 				'thumbnails',
 				'avatars',
 				'textwidgets',
+				'ajax',
 				'excludeclasses',
 				'fade_in',
 				'spinner',
@@ -176,10 +178,20 @@ class LazyLoadXT {
 		if ( $this->settings['deferred_load'] ) {
 			wp_enqueue_script( 'lazy-load-xt-deferred', $script_url_pre.'.autoload'.$min.'.js', array( 'jquery','lazy-load-xt-script' ), $this->lazyloadxt_ver, $footer );
 		}
+		// Enqueue deferred load if enabled
+		if ( $this->settings['ajax'] ) {
+			// Don't load it from the CDN
+			wp_enqueue_script( 'lazy-load-xt-ajax', $this->dir.'js/'.$jqll.'.ajax.js', array( 'jquery','lazy-load-xt-script' ), $this->lazyloadxt_ver, $footer );
+		}
 		
 	}
 
-	function the_content_filter($content) {
+	function filter_html($content) {
+
+		if (is_feed()) {
+			return $content;
+		}
+
 		// If there's anything there, replace the 'src' with 'data-src'
 		if (strlen($content)) {
 			$newcontent = $content;
@@ -208,8 +220,14 @@ class LazyLoadXT {
 
 		// Loop through tags
 		foreach($tags as $tag) {
+
+			// Is the tag self closing?
+			$self_closing = in_array($tag, array('img','embed','source'));
+			// Set tag end, depending of if it's self-closing
+			$tag_end = ($self_closing) ? '\/' : '\/'.$tag;
+
 			// Look for tag in content
-			preg_match_all('/<'.$tag.'[\s\r\n]+.*?(\/|\/'.$tag.')>/is',$content,$matches);
+			preg_match_all('/<'.$tag.'[\s\r\n]([^<]+)'.$tag_end.'>(?!<noscript>|<\/noscript>)/is',$content,$matches);
 
 			// If tags exist, loop through them and replace stuff
 			if (count($matches[0])) {
@@ -227,7 +245,7 @@ class LazyLoadXT {
 						// Use script-based tagging
 						if ($this->settings['script_based_tagging']) {
 							// If it's self-closing, use L();
-							if (in_array($tag, array('img','embed'))) {
+							if ( $self_closing ) {
 								$replace_markup = '<script>L();</script>'.$original;
 							} else {
 								// Otherwise, use Lb(); and Le();
@@ -239,7 +257,7 @@ class LazyLoadXT {
 							// If the element requires a 'src', set the src to default image
 							$src = (in_array($tag, $src_req)) ? ' src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"' : '';
 							// If the element is an audio tag, set the src to a blank mp3
-							$src = ($tag == 'audio') ? $this->dir.'assets/empty.mp3' : $src;
+							$src = ($tag == 'audio') ? ' src="'.$this->dir.'assets/empty.mp3"' : $src;
 
 							// Set replace html
 							$replace_markup = $match;
@@ -260,71 +278,16 @@ class LazyLoadXT {
 		return $newcontent;
 	}
 
-	function switch_src_for_data_src($content, $tags) {
-		// Make a new DOMDoc
-		$doc = new DOMDocument();
-		// Load it up (Doesn't like HTML5)
-		@$doc->LoadHTML($content);
-
-		// Attributes to search for
-		$attrs = array('src','poster');
-		// Elements requiring a 'src' attribute to be valide HTML
-		$src_req = array('img','source');
-
-		foreach ($tags as $tag) {
-			// Get the elements we need to switch the src for
-			$elements = $doc->getElementsByTagName($tag);
-
-			// Switch out the 'src' with 'data-src'
-			foreach ($elements as $element) {
-				// Get the classes of element
-				if ($tag == 'source') {
-					// Check the parent tag for <video> and <audio> tags
-					$parent = $element->parentNode;
-					$classes = explode(' ',$parent->getAttribute('class'));
-				} else {
-					$classes = explode(' ',$element->getAttribute('class'));
-				}
-				
-				// If it doesn't have any of the designated "skip" classes, replace the 'src' with 'data-src'
-				if (count(array_intersect($classes,$this->settings['excludeclasses'])) == 0) {
-					foreach ($attrs as $attr) {
-						// Try to get the src attr
-						$elemattr = $element->getAttribute($attr);
-						//if attr exists
-						if ($elemattr) {
-							// If a 'src' attribute is required for valid html
-							if (in_array($tag,$src_req)) {
-								// Set the 'src' to a 1x1 pixel transparent gif
-								$element->setAttribute($attr,'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
-							} else {
-								// Remove the existing attributes.
-								$element->removeAttribute($attr);
-							}
-    						// Set the new attribute.
-							$element->setAttribute('data-'.$attr, $elemattr);
-						}
-					}
-				}
-			}
-		}
-
-		// Prep for return
-		$return = new DOMDocument();
-		// Get the contents of the body tag
-		$body = $doc->getElementsByTagName('body')->item(0);
-		// Append them to the $return
-		foreach ($body->childNodes as $child){
-		    $return->appendChild($return->importNode($child, true));
-		}
-		// And we're done
-		return $return->saveHTML();
-	}
-
 }
 
 // Init
-$lazyloadxt = new LazyLoadXT;
+$lazyloadxt = new LazyLoadXT();
 
+/* API */
 
+// Pass HTML to this function to filter it for lazy loading
+function get_lazyloadxt_html($html = '') {
+	global $lazyloadxt;
+	return $lazyloadxt->filter_html($html);
+}
 
